@@ -96,12 +96,13 @@ async function addDonation(donationData) {
     try {
         const docRef = await db.collection('donations').add({
             ...donationData,
+            donationDate: firebase.firestore.Timestamp.fromDate(donationData.donationDate),
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         
         // تحديث آخر تبرع للمتبرع
         await db.collection('donors').doc(donationData.donorId).update({
-            lastDonation: firebase.firestore.FieldValue.serverTimestamp()
+            lastDonation: firebase.firestore.Timestamp.fromDate(donationData.donationDate)
         });
         
         return docRef.id;
@@ -287,8 +288,15 @@ async function deleteVoucher(voucherId) {
 // تحديث شيك الدم
 async function updateVoucher(voucherId, updateData) {
     try {
+        const dataToUpdate = { ...updateData };
+        
+        // التعامل مع تاريخ الصرف إذا وجد
+        if (updateData.redemptionDate) {
+            dataToUpdate.redemptionDate = firebase.firestore.Timestamp.fromDate(updateData.redemptionDate);
+        }
+        
         await db.collection('vouchers').doc(voucherId).update({
-            ...updateData,
+            ...dataToUpdate,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         return true;

@@ -183,7 +183,8 @@ async function handleAddDonor(e) {
     const donorData = {
         name: document.getElementById('donorName').value.trim(),
         phone: document.getElementById('donorPhone').value.trim(),
-        bloodType: document.getElementById('donorBloodType').value
+        bloodType: document.getElementById('donorBloodType').value,
+        notes: document.getElementById('donorNotes').value.trim()
     };
     
     try {
@@ -205,6 +206,7 @@ async function handleAddDonation(e) {
     const donorId = document.getElementById('donationDonor').value;
     const donationDate = document.getElementById('donationDate').value;
     const amount = document.getElementById('donationAmount').value;
+    const notes = document.getElementById('donationNotes').value.trim();
     
     const donor = donors.find(d => d.id === donorId);
     
@@ -213,7 +215,8 @@ async function handleAddDonation(e) {
         donorName: donor.name,
         bloodType: donor.bloodType,
         amount: parseInt(amount),
-        donationDate: new Date(donationDate)
+        donationDate: new Date(donationDate),
+        notes: notes
     };
     
     try {
@@ -234,6 +237,7 @@ async function handleAddVoucher(e) {
     
     const donorId = document.getElementById('voucherDonor').value;
     const amount = document.getElementById('voucherAmount').value;
+    const notes = document.getElementById('voucherNotes').value.trim();
     
     const donor = donors.find(d => d.id === donorId);
     
@@ -241,7 +245,8 @@ async function handleAddVoucher(e) {
         donorId: donorId,
         donorName: donor.name,
         bloodType: donor.bloodType,
-        amount: parseInt(amount)
+        amount: parseInt(amount),
+        notes: notes
     };
     
     try {
@@ -366,6 +371,9 @@ function displayFilteredDonors(donorsList) {
             '<span style="color: #2ecc71;">✅ متاح للتبرع</span>' : 
             '<span style="color: #e74c3c;">❌ غير متاح</span>';
         
+        const notesDisplay = donor.notes ? 
+            `<div class="item-notes">📝 ${donor.notes.substring(0, 50)}${donor.notes.length > 50 ? '...' : ''}</div>` : '';
+        
         return `
             <div class="donor-item">
                 <div class="donor-header">
@@ -386,6 +394,7 @@ function displayFilteredDonors(donorsList) {
                 <div class="donor-eligibility">
                     ${eligibilityStatus}
                 </div>
+                ${notesDisplay}
             </div>
         `;
     }).join('');
@@ -397,7 +406,10 @@ function displayFilteredDonors(donorsList) {
 function checkDonorEligibility(lastDonationDate) {
     if (!lastDonationDate) return true; // لم يتبرع من قبل
     
-    const lastDonation = lastDonationDate.toDate ? lastDonationDate.toDate() : new Date(lastDonationDate);
+    const lastDonation = lastDonationDate.toDate ? 
+        lastDonationDate.toDate() : 
+        (lastDonationDate instanceof Date ? lastDonationDate : new Date(lastDonationDate));
+    
     const now = new Date();
     const daysSinceLastDonation = Math.floor((now - lastDonation) / (1000 * 60 * 60 * 24));
     
@@ -565,11 +577,15 @@ function updateRecentVouchers() {
         const statusColor = voucher.status === 'issued' ? '#2ecc71' : 
                            voucher.status === 'redeemed' ? '#3498db' : '#e74c3c';
         
+        const notesDisplay = voucher.notes ? 
+            `<div class="item-notes">📝 ${voucher.notes.substring(0, 40)}${voucher.notes.length > 40 ? '...' : ''}</div>` : '';
+        
         return `
             <div class="list-item">
                 <div>
                     <span class="item-name">${voucher.voucherNumber}</span>
                     <span class="item-info">${voucher.donorName} - ${voucher.amount} وحدة</span>
+                    ${notesDisplay}
                 </div>
                 <div>
                     <span style="color: ${statusColor}; font-size: 12px;">${statusText}</span>
@@ -632,12 +648,19 @@ function updateRecentDonations() {
     }
     
     const html = donations.slice(0, 5).map(donation => {
-        const date = donation.createdAt ? new Date(donation.createdAt.toDate()).toLocaleDateString('ar-SA') : 'غير محدد';
+        const date = donation.donationDate ? 
+            new Date(donation.donationDate.toDate ? donation.donationDate.toDate() : donation.donationDate).toLocaleDateString('ar-SA') : 
+            'غير محدد';
+        
+        const notesDisplay = donation.notes ? 
+            `<div class="item-notes">📝 ${donation.notes.substring(0, 40)}${donation.notes.length > 40 ? '...' : ''}</div>` : '';
+        
         return `
             <div class="list-item">
                 <div>
                     <span class="item-name">${donation.donorName}</span>
                     <span class="item-info">${donation.amount} وحدة - ${date}</span>
+                    ${notesDisplay}
                 </div>
                 <div class="item-actions">
                     <button class="edit-btn" onclick="editDonation('${donation.id}')">تعديل</button>
@@ -859,8 +882,10 @@ async function handleRedeemVoucher(e) {
     e.preventDefault();
     
     const voucherId = document.getElementById('voucherSelect').value;
+    const redemptionDate = document.getElementById('redemptionDate').value;
     const beneficiaryName = document.getElementById('beneficiaryName').value.trim();
     const redemptionPurpose = document.getElementById('redemptionPurpose').value.trim();
+    const redemptionNotes = document.getElementById('redemptionNotes').value.trim();
     
     if (!voucherId) {
         showNotification('يرجى اختيار الشيك المراد صرفه', 'error');
@@ -889,9 +914,10 @@ async function handleRedeemVoucher(e) {
         // تحديث حالة الشيك
         await firebaseDB.updateVoucher(voucherId, {
             status: 'redeemed',
-            redemptionDate: firebase.firestore.FieldValue.serverTimestamp(),
+            redemptionDate: new Date(redemptionDate),
             beneficiaryName: beneficiaryName,
-            redemptionPurpose: redemptionPurpose
+            redemptionPurpose: redemptionPurpose,
+            redemptionNotes: redemptionNotes
         });
         
         showNotification('تم صرف الشيك بنجاح', 'success');

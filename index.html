@@ -109,6 +109,7 @@
                     <option value="AB+">AB+</option>
                     <option value="AB-">AB-</option>
                 </select>
+                <textarea id="donorNotes" placeholder="ملاحظات إضافية (اختياري)" rows="3"></textarea>
                 <div class="form-buttons">
                     <button type="submit" class="submit-btn">حفظ</button>
                     <button type="button" class="cancel-btn" onclick="closeModal('addDonorModal')">إلغاء</button>
@@ -127,6 +128,7 @@
                 </select>
                 <input type="date" id="donationDate" required>
                 <input type="number" id="donationAmount" placeholder="كمية التبرع (وحدة)" min="1" required>
+                <textarea id="donationNotes" placeholder="ملاحظات التبرع (اختياري)" rows="3"></textarea>
                 <div class="form-buttons">
                     <button type="submit" class="submit-btn">تسجيل</button>
                     <button type="button" class="cancel-btn" onclick="closeModal('addDonationModal')">إلغاء</button>
@@ -144,6 +146,7 @@
                     <option value="">اختر المتبرع</option>
                 </select>
                 <input type="number" id="voucherAmount" placeholder="عدد الوحدات" min="1" required>
+                <textarea id="voucherNotes" placeholder="ملاحظات الشيك (اختياري)" rows="3"></textarea>
                 <div class="form-buttons">
                     <button type="submit" class="submit-btn">إصدار</button>
                     <button type="button" class="cancel-btn" onclick="closeModal('addVoucherModal')">إلغاء</button>
@@ -209,6 +212,7 @@
                 </div>
                 <input type="text" id="beneficiaryName" placeholder="اسم المستفيد" required>
                 <input type="text" id="redemptionPurpose" placeholder="الغرض من الصرف" required>
+                <textarea id="redemptionNotes" placeholder="ملاحظات الصرف (اختياري)" rows="3"></textarea>
                 <div class="form-buttons">
                     <button type="submit" class="submit-btn">صرف الشيك</button>
                     <button type="button" class="cancel-btn" onclick="closeModal('redeemVoucherModal')">إلغاء</button>
