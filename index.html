@@ -35,30 +35,35 @@
         </div>
 
         <!-- الأزرار الرئيسية -->
-        <div class="actions">
-            <button id="addDonorBtn" class="action-btn">
-                <span class="btn-icon">➕</span>
-                <span class="btn-text">إضافة متبرع جديد</span>
+        <div class="action-buttons">
+            <button id="addDonorBtn" class="action-btn primary">
+                <span class="btn-icon">👤</span>
+                <span class="btn-text">إضافة متبرع</span>
             </button>
             
-            <button id="addDonationBtn" class="action-btn">
+            <button id="addDonationBtn" class="action-btn success">
                 <span class="btn-icon">🩸</span>
                 <span class="btn-text">تسجيل تبرع</span>
             </button>
             
-            <button id="addVoucherBtn" class="action-btn">
+            <button id="addVoucherBtn" class="action-btn info">
                 <span class="btn-icon">🎫</span>
                 <span class="btn-text">إصدار شيك دم</span>
             </button>
             
-            <button id="donorsListBtn" class="action-btn">
+            <button id="donorsListBtn" class="action-btn secondary">
                 <span class="btn-icon">👥</span>
                 <span class="btn-text">قائمة المتبرعين</span>
             </button>
             
-            <button id="redeemVoucherBtn" class="action-btn">
+            <button id="redeemVoucherBtn" class="action-btn warning">
                 <span class="btn-icon">💰</span>
                 <span class="btn-text">صرف شيك دم</span>
+            </button>
+            
+            <button id="statisticsBtn" class="action-btn stats">
+                <span class="btn-icon">📊</span>
+                <span class="btn-text">إحصائيات</span>
             </button>
         </div>
 
@@ -123,9 +128,11 @@
         <div class="modal-content">
             <h2>تسجيل تبرع جديد</h2>
             <form id="addDonationForm">
-                <select id="donationDonor" required>
-                    <option value="">اختر المتبرع</option>
-                </select>
+                <div class="donor-search-container">
+                    <input type="text" id="donationDonorSearch" placeholder="ابحث عن متبرع بالاسم" required>
+                    <input type="hidden" id="donationDonorId" required>
+                    <div id="donationDonorResults" class="search-results" style="display: none;"></div>
+                </div>
                 <input type="date" id="donationDate" required>
                 <input type="number" id="donationAmount" placeholder="كمية التبرع (وحدة)" min="1" required>
                 <textarea id="donationNotes" placeholder="ملاحظات التبرع (اختياري)" rows="3"></textarea>
@@ -142,9 +149,11 @@
         <div class="modal-content">
             <h2>إصدار شيك دم جديد</h2>
             <form id="addVoucherForm">
-                <select id="voucherDonor" required>
-                    <option value="">اختر المتبرع</option>
-                </select>
+                <div class="donor-search-container">
+                    <input type="text" id="voucherDonorSearch" placeholder="ابحث عن متبرع بالاسم" required>
+                    <input type="hidden" id="voucherDonorId" required>
+                    <div id="voucherDonorResults" class="search-results" style="display: none;"></div>
+                </div>
                 <input type="number" id="voucherAmount" placeholder="عدد الوحدات" min="1" required>
                 <textarea id="voucherNotes" placeholder="ملاحظات الشيك (اختياري)" rows="3"></textarea>
                 <div class="form-buttons">
@@ -266,7 +275,68 @@
         </div>
     </div>
 
-    <!-- نموذج تعديل شيك -->
+    <!-- نموذج الإحصائيات -->
+    <div id="statisticsModal" class="modal">
+        <div class="modal-content modal-large">
+            <h2>الإحصائيات والتقارير</h2>
+            
+            <!-- خيارات الفلترة -->
+            <div class="filter-section">
+                <div class="filter-row">
+                    <select id="statsType">
+                        <option value="overview">نظرة عامة</option>
+                        <option value="donors">إحصائيات المتبرعين</option>
+                        <option value="donations">إحصائيات التبرعات</option>
+                        <option value="vouchers">إحصائيات الشيكات</option>
+                        <option value="bloodTypes">توزيع فصائل الدم</option>
+                        <option value="namesList">كشف بالأسماء</option>
+                        <option value="donorStats">إحصائيات متبرع محدد</option>
+                    </select>
+                    
+                    <select id="statsPeriod">
+                        <option value="all">جميع الفترات</option>
+                        <option value="today">اليوم</option>
+                        <option value="week">هذا الأسبوع</option>
+                        <option value="month">هذا الشهر</option>
+                        <option value="year">هذا العام</option>
+                    </select>
+                    
+                    <select id="namesListType" style="display: none;">
+                        <option value="all">جميع السجلات</option>
+                        <option value="donors">المتبرعين فقط</option>
+                        <option value="donations">التبرعات فقط</option>
+                        <option value="vouchers">الشيكات فقط</option>
+                        <option value="redeemedVouchers">الشيكات المصروفة فقط</option>
+                    </select>
+                    
+                    <div id="donorSearchSection" style="display: none;" class="donor-search-container">
+                        <input type="text" id="donorStatsSearch" placeholder="ابحث عن متبرع بالإسم">
+                        <input type="hidden" id="donorStatsId">
+                        <div id="donorStatsResults" class="search-results" style="display: none;"></div>
+                    </div>
+                    
+                    <input type="date" id="statsStartDate" placeholder="من تاريخ">
+                    <input type="date" id="statsEndDate" placeholder="إلى تاريخ">
+                </div>
+                <div class="filter-row">
+                    <button id="generateStats" class="submit-btn">توليد الإحصائيات</button>
+                    <button id="printStats" class="print-btn">🖨️ طباعة</button>
+                    <button id="clearStats" class="clear-filters-btn">مسح الفلاتر</button>
+                </div>
+            </div>
+            
+            <!-- عرض الإحصائيات -->
+            <div id="statisticsContent" class="statistics-content">
+                <div class="stats-loading">
+                    <p>يرجى اختيار الفلاتر وضغط "توليد الإحصائيات"</p>
+                </div>
+            </div>
+            
+            <div class="form-buttons">
+                <button type="button" class="cancel-btn" onclick="closeModal('statisticsModal')">إغلاق</button>
+            </div>
+        </div>
+    </div>
     <div id="editVoucherModal" class="modal">
         <div class="modal-content">
             <h2>تعديل بيانات شيك الدم</h2>

@@ -34,31 +34,27 @@ function initializeEventListeners() {
     });
     
     document.getElementById('addDonationBtn').addEventListener('click', () => {
-        if (donors.length === 0) {
-            showNotification('يجب إضافة متبرعين أولاً', 'warning');
-            return;
-        }
-        populateDonorSelect('donationDonor');
         showModal('addDonationModal');
+        loadDonorsForDonation();
     });
     
     document.getElementById('addVoucherBtn').addEventListener('click', () => {
-        if (donors.length === 0) {
-            showNotification('يجب إضافة متبرعين أولاً', 'warning');
-            return;
-        }
-        populateDonorSelect('voucherDonor');
         showModal('addVoucherModal');
+        loadDonorsForVoucher();
     });
     
-    document.getElementById('donorsListBtn').addEventListener('click', () => {
-        loadDonorsList();
+    document.getElementById('donorsListBtn').addEventListener('click', async () => {
+        await loadDonorsList();
         showModal('donorsListModal');
     });
     
     document.getElementById('redeemVoucherBtn').addEventListener('click', async () => {
         await loadVouchersForRedemption();
         showModal('redeemVoucherModal');
+    });
+    
+    document.getElementById('statisticsBtn').addEventListener('click', () => {
+        showModal('statisticsModal');
     });
     
     // نماذج الإدخال
@@ -76,6 +72,69 @@ function initializeEventListeners() {
     document.getElementById('bloodTypeFilter').addEventListener('change', filterDonors);
     document.getElementById('eligibilityFilter').addEventListener('change', filterDonors);
     document.getElementById('clearFilters').addEventListener('click', clearAllFilters);
+    
+    // البحث عن المتبرعين في النماذج
+    document.getElementById('donationDonorSearch').addEventListener('input', (e) => searchDonors(e.target.id, 'donation'));
+    document.getElementById('voucherDonorSearch').addEventListener('input', (e) => searchDonors(e.target.id, 'voucher'));
+    
+    // الإحصائيات
+    document.getElementById('generateStats').addEventListener('click', generateStatistics);
+    document.getElementById('printStats').addEventListener('click', printStatistics);
+    document.getElementById('clearStats').addEventListener('click', clearStatisticsFilters);
+    
+    // فلتر نوع الكشف بالأسماء
+    document.getElementById('statsType').addEventListener('change', (e) => {
+        const namesListType = document.getElementById('namesListType');
+        const donorSearchSection = document.getElementById('donorSearchSection');
+        
+        if (e.target.value === 'namesList') {
+            namesListType.style.display = 'block';
+            donorSearchSection.style.display = 'none';
+        } else if (e.target.value === 'donorStats') {
+            namesListType.style.display = 'none';
+            donorSearchSection.style.display = 'block';
+        } else {
+            namesListType.style.display = 'none';
+            donorSearchSection.style.display = 'none';
+        }
+    });
+    
+    // البحث عن متبرع للإحصائيات
+    document.getElementById('donorStatsSearch').addEventListener('input', async (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        const resultsContainer = document.getElementById('donorStatsResults');
+        
+        if (!searchTerm) {
+            resultsContainer.style.display = 'none';
+            return;
+        }
+        
+        try {
+            const allDonors = await firebaseDB.getDonors();
+            const filteredDonors = allDonors.filter(donor => 
+                donor.name.toLowerCase().includes(searchTerm) ||
+                donor.phone.includes(searchTerm)
+            );
+            
+            if (filteredDonors.length === 0) {
+                resultsContainer.innerHTML = '<div class="search-result-item">لا توجد نتائج</div>';
+                resultsContainer.style.display = 'block';
+                return;
+            }
+            
+            const html = filteredDonors.map(donor => `
+                <div class="search-result-item" onclick="selectDonorForStats('${donor.id}', '${donor.name}')">
+                    <div class="donor-name">${donor.name}</div>
+                    <div class="donor-info">${donor.phone} - ${donor.bloodType}</div>
+                </div>
+            `).join('');
+            
+            resultsContainer.innerHTML = html;
+            resultsContainer.style.display = 'block';
+        } catch (error) {
+            console.error('Error searching donors:', error);
+        }
+    });
     
     // اختيار الشيك للصرف
     document.getElementById('voucherSelect').addEventListener('change', handleVoucherSelection);
@@ -203,10 +262,15 @@ async function handleAddDonor(e) {
 async function handleAddDonation(e) {
     e.preventDefault();
     
-    const donorId = document.getElementById('donationDonor').value;
+    const donorId = document.getElementById('donationDonorId').value;
     const donationDate = document.getElementById('donationDate').value;
     const amount = document.getElementById('donationAmount').value;
     const notes = document.getElementById('donationNotes').value.trim();
+    
+    if (!donorId) {
+        showNotification('يرجى اختيار متبرع', 'error');
+        return;
+    }
     
     const donor = donors.find(d => d.id === donorId);
     
@@ -235,9 +299,14 @@ async function handleAddDonation(e) {
 async function handleAddVoucher(e) {
     e.preventDefault();
     
-    const donorId = document.getElementById('voucherDonor').value;
+    const donorId = document.getElementById('voucherDonorId').value;
     const amount = document.getElementById('voucherAmount').value;
     const notes = document.getElementById('voucherNotes').value.trim();
+    
+    if (!donorId) {
+        showNotification('يرجى اختيار متبرع', 'error');
+        return;
+    }
     
     const donor = donors.find(d => d.id === donorId);
     
@@ -447,7 +516,858 @@ function filterDonors() {
     displayFilteredDonors(filteredDonors);
 }
 
-// مسح جميع الفلاتر
+// وظائف البحث عن المتبرعين
+async function loadDonorsForDonation() {
+    try {
+        const allDonors = await firebaseDB.getDonors();
+        window.donationDonorsData = allDonors;
+    } catch (error) {
+        console.error('Error loading donors for donation:', error);
+    }
+}
+
+async function loadDonorsForVoucher() {
+    try {
+        const allDonors = await firebaseDB.getDonors();
+        window.voucherDonorsData = allDonors;
+    } catch (error) {
+        console.error('Error loading donors for voucher:', error);
+    }
+}
+
+function searchDonors(inputId, type) {
+    const searchTerm = document.getElementById(inputId).value.toLowerCase();
+    const resultsContainer = document.getElementById(inputId.replace('Search', 'Results'));
+    const donorsData = type === 'donation' ? window.donationDonorsData : window.voucherDonorsData;
+    
+    if (!searchTerm || !donorsData) {
+        resultsContainer.style.display = 'none';
+        return;
+    }
+    
+    const filteredDonors = donorsData.filter(donor => 
+        donor.name.toLowerCase().includes(searchTerm) ||
+        donor.phone.includes(searchTerm)
+    );
+    
+    if (filteredDonors.length === 0) {
+        resultsContainer.innerHTML = '<div class="search-result-item">لا توجد نتائج</div>';
+        resultsContainer.style.display = 'block';
+        return;
+    }
+    
+    const html = filteredDonors.map(donor => `
+        <div class="search-result-item" onclick="selectDonor('${donor.id}', '${donor.name}', '${type}')">
+            <div class="donor-name">${donor.name}</div>
+            <div class="donor-info">${donor.phone} - ${donor.bloodType}</div>
+        </div>
+    `).join('');
+    
+    resultsContainer.innerHTML = html;
+    resultsContainer.style.display = 'block';
+}
+
+function selectDonor(donorId, donorName, type) {
+    if (type === 'donation') {
+        document.getElementById('donationDonorId').value = donorId;
+        document.getElementById('donationDonorSearch').value = donorName;
+        document.getElementById('donationDonorResults').style.display = 'none';
+    } else if (type === 'voucher') {
+        document.getElementById('voucherDonorId').value = donorId;
+        document.getElementById('voucherDonorSearch').value = donorName;
+        document.getElementById('voucherDonorResults').style.display = 'none';
+    }
+}
+
+function selectDonorForStats(donorId, donorName) {
+    document.getElementById('donorStatsId').value = donorId;
+    document.getElementById('donorStatsSearch').value = donorName;
+    document.getElementById('donorStatsResults').style.display = 'none';
+}
+
+// وظائف الإحصائيات
+async function generateStatistics() {
+    const statsType = document.getElementById('statsType').value;
+    const statsPeriod = document.getElementById('statsPeriod').value;
+    const startDate = document.getElementById('statsStartDate').value;
+    const endDate = document.getElementById('statsEndDate').value;
+    
+    const contentContainer = document.getElementById('statisticsContent');
+    contentContainer.innerHTML = '<div class="stats-loading"><p>جاري تحميل الإحصائيات...</p></div>';
+    
+    try {
+        let statsHtml = '';
+        
+        switch (statsType) {
+            case 'overview':
+                statsHtml = await generateOverviewStats(statsPeriod, startDate, endDate);
+                break;
+            case 'donors':
+                statsHtml = await generateDonorsStats(statsPeriod, startDate, endDate);
+                break;
+            case 'donations':
+                statsHtml = await generateDonationsStats(statsPeriod, startDate, endDate);
+                break;
+            case 'vouchers':
+                statsHtml = await generateVouchersStats(statsPeriod, startDate, endDate);
+                break;
+            case 'bloodTypes':
+                statsHtml = await generateBloodTypesStats(statsPeriod, startDate, endDate);
+                break;
+            case 'namesList':
+                const namesListType = document.getElementById('namesListType').value;
+                statsHtml = await generateNamesList(namesListType, statsPeriod, startDate, endDate);
+                break;
+            case 'donorStats':
+                const donorId = document.getElementById('donorStatsId').value;
+                if (!donorId) {
+                    statsHtml = '<div class="stats-loading"><p>يرجى اختيار متبرع أولاً</p></div>';
+                } else {
+                    statsHtml = await generateDonorStats(donorId, statsPeriod, startDate, endDate);
+                }
+                break;
+        }
+        
+        contentContainer.innerHTML = statsHtml;
+    } catch (error) {
+        console.error('Error generating statistics:', error);
+        contentContainer.innerHTML = '<div class="stats-loading"><p>حدث خطأ في تحميل الإحصائيات</p></div>';
+    }
+}
+
+async function generateOverviewStats(period, startDate, endDate) {
+    const [donorsData, donationsData, vouchersData] = await Promise.all([
+        firebaseDB.getDonors(),
+        firebaseDB.getDonations(),
+        firebaseDB.getVouchers()
+    ]);
+    
+    const filteredDonations = filterDataByDate(donationsData, period, startDate, endDate, 'donationDate');
+    const filteredVouchers = filterDataByDate(vouchersData, period, startDate, endDate, 'issueDate');
+    
+    const totalDonations = filteredDonations.reduce((sum, d) => sum + d.amount, 0);
+    const totalVouchers = filteredVouchers.reduce((sum, v) => sum + v.amount, 0);
+    const redeemedVouchers = filteredVouchers.filter(v => v.status === 'redeemed').length;
+    
+    return `
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>إجمالي المتبرعين</h3>
+                <p class="stat-value">${donorsData.length}</p>
+                <p class="stat-label">متبرع مسجل</p>
+            </div>
+            <div class="stat-card">
+                <h3>إجمالي التبرعات</h3>
+                <p class="stat-value">${totalDonations}</p>
+                <p class="stat-label">وحدة دم</p>
+            </div>
+            <div class="stat-card">
+                <h3>إجمالي الشيكات</h3>
+                <p class="stat-value">${totalVouchers}</p>
+                <p class="stat-label">وحدة دم</p>
+            </div>
+            <div class="stat-card">
+                <h3>الشيكات المصروفة</h3>
+                <p class="stat-value">${redeemedVouchers}</p>
+                <p class="stat-label">شيك</p>
+            </div>
+        </div>
+    `;
+}
+
+async function generateDonorsStats(period, startDate, endDate) {
+    const donorsData = await firebaseDB.getDonors();
+    const eligibleDonors = donorsData.filter(d => checkDonorEligibility(d.lastDonation));
+    
+    const bloodTypeStats = {};
+    donorsData.forEach(donor => {
+        bloodTypeStats[donor.bloodType] = (bloodTypeStats[donor.bloodType] || 0) + 1;
+    });
+    
+    let tableHtml = '<table class="stats-table"><tr><th>فصيلة الدم</th><th>عدد المتبرعين</th></tr>';
+    for (const [bloodType, count] of Object.entries(bloodTypeStats)) {
+        tableHtml += `<tr><td>${bloodType}</td><td>${count}</td></tr>`;
+    }
+    tableHtml += '</table>';
+    
+    return `
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>إجمالي المتبرعين</h3>
+                <p class="stat-value">${donorsData.length}</p>
+                <p class="stat-label">متبرع مسجل</p>
+            </div>
+            <div class="stat-card">
+                <h3>المتبرعون المتاحون</h3>
+                <p class="stat-value">${eligibleDonors.length}</p>
+                <p class="stat-label">متاح للتبرع</p>
+            </div>
+        </div>
+        <h3>توزيع المتبرعين حسب فصيلة الدم</h3>
+        ${tableHtml}
+    `;
+}
+
+async function generateDonationsStats(period, startDate, endDate) {
+    const donationsData = await firebaseDB.getDonations();
+    const filteredDonations = filterDataByDate(donationsData, period, startDate, endDate, 'donationDate');
+    
+    const totalAmount = filteredDonations.reduce((sum, d) => sum + d.amount, 0);
+    const avgAmount = filteredDonations.length > 0 ? (totalAmount / filteredDonations.length).toFixed(1) : 0;
+    
+    return `
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>عدد التبرعات</h3>
+                <p class="stat-value">${filteredDonations.length}</p>
+                <p class="stat-label">عملية تبرع</p>
+            </div>
+            <div class="stat-card">
+                <h3>إجمالي الوحدات</h3>
+                <p class="stat-value">${totalAmount}</p>
+                <p class="stat-label">وحدة دم</p>
+            </div>
+            <div class="stat-card">
+                <h3>متوسط التبرع</h3>
+                <p class="stat-value">${avgAmount}</p>
+                <p class="stat-label">وحدة بالعملية</p>
+            </div>
+        </div>
+    `;
+}
+
+async function generateVouchersStats(period, startDate, endDate) {
+    const vouchersData = await firebaseDB.getVouchers();
+    const filteredVouchers = filterDataByDate(vouchersData, period, startDate, endDate, 'issueDate');
+    
+    const issuedVouchers = filteredVouchers.filter(v => v.status === 'issued');
+    const redeemedVouchers = filteredVouchers.filter(v => v.status === 'redeemed');
+    const totalAmount = filteredVouchers.reduce((sum, v) => sum + v.amount, 0);
+    
+    return `
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>الشيكات الصادرة</h3>
+                <p class="stat-value">${filteredVouchers.length}</p>
+                <p class="stat-label">شيك</p>
+            </div>
+            <div class="stat-card">
+                <h3>الشيكات المصروفة</h3>
+                <p class="stat-value">${redeemedVouchers.length}</p>
+                <p class="stat-label">شيك</p>
+            </div>
+            <div class="stat-card">
+                <h3>الشيكات المتبقية</h3>
+                <p class="stat-value">${issuedVouchers.length}</p>
+                <p class="stat-label">شيك صالح</p>
+            </div>
+            <div class="stat-card">
+                <h3>إجمالي الوحدات</h3>
+                <p class="stat-value">${totalAmount}</p>
+                <p class="stat-label">وحدة دم</p>
+            </div>
+        </div>
+    `;
+}
+
+async function generateBloodTypesStats(period, startDate, endDate) {
+    const donationsData = await firebaseDB.getDonations();
+    const filteredDonations = filterDataByDate(donationsData, period, startDate, endDate, 'donationDate');
+    
+    const bloodTypeStats = {};
+    filteredDonations.forEach(donation => {
+        bloodTypeStats[donation.bloodType] = (bloodTypeStats[donation.bloodType] || 0) + donation.amount;
+    });
+    
+    let tableHtml = '<table class="stats-table"><tr><th>فصيلة الدم</th><th>إجمالي الوحدات</th><th>نسبة المئوية</th></tr>';
+    const totalUnits = Object.values(bloodTypeStats).reduce((sum, amount) => sum + amount, 0);
+    
+    for (const [bloodType, amount] of Object.entries(bloodTypeStats)) {
+        const percentage = totalUnits > 0 ? ((amount / totalUnits) * 100).toFixed(1) : 0;
+        tableHtml += `<tr><td>${bloodType}</td><td>${amount}</td><td>${percentage}%</td></tr>`;
+    }
+    tableHtml += '</table>';
+    
+    return `
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>إجمالي الوحدات</h3>
+                <p class="stat-value">${totalUnits}</p>
+                <p class="stat-label">وحدة دم</p>
+            </div>
+        </div>
+        <h3>توزيع الوحدات حسب فصيلة الدم</h3>
+        ${tableHtml}
+    `;
+}
+
+function filterDataByDate(data, period, startDate, endDate, dateField) {
+    if (period === 'all' && !startDate && !endDate) return data;
+    
+    const now = new Date();
+    let filterStart, filterEnd;
+    
+    if (period === 'today') {
+        filterStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        filterEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    } else if (period === 'week') {
+        filterStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        filterEnd = now;
+    } else if (period === 'month') {
+        filterStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        filterEnd = now;
+    } else if (period === 'year') {
+        filterStart = new Date(now.getFullYear(), 0, 1);
+        filterEnd = now;
+    } else {
+        filterStart = startDate ? new Date(startDate) : null;
+        filterEnd = endDate ? new Date(endDate + 'T23:59:59') : now;
+    }
+    
+    return data.filter(item => {
+        const itemDate = item[dateField] ? 
+            (item[dateField].toDate ? item[dateField].toDate() : new Date(item[dateField])) : 
+            null;
+        
+        if (!itemDate) return false;
+        
+        if (filterStart && itemDate < filterStart) return false;
+        if (filterEnd && itemDate > filterEnd) return false;
+        
+        return true;
+    });
+}
+
+async function generateDonorStats(donorId, period, startDate, endDate) {
+    const [donorsData, donationsData, vouchersData] = await Promise.all([
+        firebaseDB.getDonors(),
+        firebaseDB.getDonations(),
+        firebaseDB.getVouchers()
+    ]);
+    
+    const donor = donorsData.find(d => d.id === donorId);
+    if (!donor) {
+        return '<div class="stats-loading"><p>المتبرع غير موجود</p></div>';
+    }
+    
+    const donorDonations = donationsData.filter(d => d.donorId === donorId);
+    const donorVouchers = vouchersData.filter(v => v.donorId === donorId);
+    
+    const filteredDonations = filterDataByDate(donorDonations, period, startDate, endDate, 'donationDate');
+    const filteredVouchers = filterDataByDate(donorVouchers, period, startDate, endDate, 'issueDate');
+    
+    const totalDonationsAmount = filteredDonations.reduce((sum, d) => sum + d.amount, 0);
+    const totalVouchersAmount = filteredVouchers.reduce((sum, v) => sum + v.amount, 0);
+    const redeemedVouchers = filteredVouchers.filter(v => v.status === 'redeemed');
+    const redeemedAmount = redeemedVouchers.reduce((sum, v) => sum + v.amount, 0);
+    
+    const dateRange = getDateRangeText(period, startDate, endDate);
+    
+    let html = `
+        <div class="donor-stats-header">
+            <h2>إحصائيات المتبرع: ${donor.name}</h2>
+            <p class="donor-info">📱 ${donor.phone} | 🩸 ${donor.bloodType}</p>
+            <p class="date-range">${dateRange}</p>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>عدد التبرعات</h3>
+                <p class="stat-value">${filteredDonations.length}</p>
+                <p class="stat-label">عملية تبرع</p>
+            </div>
+            <div class="stat-card">
+                <h3>إجمالي التبرعات</h3>
+                <p class="stat-value">${totalDonationsAmount}</p>
+                <p class="stat-label">وحدة دم</p>
+            </div>
+            <div class="stat-card">
+                <h3>عدد الشيكات</h3>
+                <p class="stat-value">${filteredVouchers.length}</p>
+                <p class="stat-label">شيك دم</p>
+            </div>
+            <div class="stat-card">
+                <h3>إجمالي الشيكات</h3>
+                <p class="stat-value">${totalVouchersAmount}</p>
+                <p class="stat-label">وحدة دم</p>
+            </div>
+        </div>
+    `;
+    
+    // جدول التبرعات
+    if (filteredDonations.length > 0) {
+        html += `
+            <h3>سجل التبرعات</h3>
+            <table class="stats-table names-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>التاريخ</th>
+                        <th>الكمية</th>
+                        <th>ملاحظات</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        filteredDonations.forEach((donation, index) => {
+            const date = donation.donationDate ? 
+                new Date(donation.donationDate.toDate ? donation.donationDate.toDate() : donation.donationDate).toLocaleDateString('ar-SA') : 
+                'غير محدد';
+            const notes = donation.notes ? donation.notes.substring(0, 50) + (donation.notes.length > 50 ? '...' : '') : '-';
+            
+            html += `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${date}</td>
+                    <td>${donation.amount} وحدة</td>
+                    <td>${notes}</td>
+                </tr>
+            `;
+        });
+        
+        html += '</tbody></table>';
+    }
+    
+    // جدول الشيكات
+    if (filteredVouchers.length > 0) {
+        html += `
+            <h3>سجل الشيكات</h3>
+            <table class="stats-table names-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>رقم الشيك</th>
+                        <th>تاريخ الإصدار</th>
+                        <th>الكمية</th>
+                        <th>الحالة</th>
+                        <th>ملاحظات</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        filteredVouchers.forEach((voucher, index) => {
+            const date = voucher.issueDate ? formatDate(voucher.issueDate) : 'غير محدد';
+            const statusText = getStatusText(voucher.status);
+            const notes = voucher.notes ? voucher.notes.substring(0, 50) + (voucher.notes.length > 50 ? '...' : '') : '-';
+            
+            html += `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${voucher.voucherNumber}</td>
+                    <td>${date}</td>
+                    <td>${voucher.amount} وحدة</td>
+                    <td>${statusText}</td>
+                    <td>${notes}</td>
+                </tr>
+            `;
+        });
+        
+        html += '</tbody></table>';
+    }
+    
+    // جدول الشيكات المصروفة
+    if (redeemedVouchers.length > 0) {
+        html += `
+            <h3>الشيكات المصروفة</h3>
+            <table class="stats-table names-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>رقم الشيك</th>
+                        <th>تاريخ الصرف</th>
+                        <th>الكمية</th>
+                        <th>المستفيد</th>
+                        <th>الغرض</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        redeemedVouchers.forEach((voucher, index) => {
+            const date = voucher.redemptionDate ? 
+                new Date(voucher.redemptionDate.toDate ? voucher.redemptionDate.toDate() : voucher.redemptionDate).toLocaleDateString('ar-SA') : 
+                'غير محدد';
+            
+            html += `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${voucher.voucherNumber}</td>
+                    <td>${date}</td>
+                    <td>${voucher.amount} وحدة</td>
+                    <td>${voucher.beneficiaryName || '-'}</td>
+                    <td>${voucher.redemptionPurpose || '-'}</td>
+                </tr>
+            `;
+        });
+        
+        html += '</tbody></table>';
+    }
+    
+    // ملخص إجمالي
+    html += `
+        <div class="donor-summary">
+            <h3>ملخص إجمالي</h3>
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <strong>إجمالي الوحدات المتبرعة:</strong> ${totalDonationsAmount} وحدة
+                </div>
+                <div class="summary-item">
+                    <strong>إجمالي الشيكات الصادرة:</strong> ${totalVouchersAmount} وحدة
+                </div>
+                <div class="summary-item">
+                    <strong>الشيكات المصروفة:</strong> ${redeemedAmount} وحدة
+                </div>
+                <div class="summary-item">
+                    <strong>صافي الوحدات:</strong> ${totalVouchersAmount - redeemedAmount} وحدة
+                </div>
+            </div>
+        </div>
+    `;
+    
+    return html;
+}
+
+async function generateNamesList(listType, period, startDate, endDate) {
+    const [donorsData, donationsData, vouchersData] = await Promise.all([
+        firebaseDB.getDonors(),
+        firebaseDB.getDonations(),
+        firebaseDB.getVouchers()
+    ]);
+    
+    let tableHtml = '';
+    let title = '';
+    
+    switch (listType) {
+        case 'donors':
+            title = 'كشف بأسماء المتبرعين';
+            tableHtml = generateDonorsNamesList(donorsData, period, startDate, endDate);
+            break;
+        case 'donations':
+            title = 'كشف بأسماء المتبرعين (التبرعات)';
+            tableHtml = generateDonationsNamesList(donorsData, donationsData, period, startDate, endDate);
+            break;
+        case 'vouchers':
+            title = 'كشف بأسماء المتبرعين (الشيكات)';
+            tableHtml = generateVouchersNamesList(donorsData, vouchersData, period, startDate, endDate);
+            break;
+        case 'redeemedVouchers':
+            title = 'كشف بأسماء المتبرعين (الشيكات المصروفة)';
+            tableHtml = generateRedeemedVouchersNamesList(donorsData, vouchersData, period, startDate, endDate);
+            break;
+        default:
+            title = 'كشف شامل بأسماء المتبرعين';
+            tableHtml = generateAllNamesList(donorsData, donationsData, vouchersData, period, startDate, endDate);
+    }
+    
+    const dateRange = getDateRangeText(period, startDate, endDate);
+    
+    return `
+        <div class="names-list-header">
+            <h2>${title}</h2>
+            <p class="date-range">${dateRange}</p>
+        </div>
+        ${tableHtml}
+    `;
+}
+
+function generateDonorsNamesList(donorsData, period, startDate, endDate) {
+    let filteredDonors = donorsData;
+    
+    if (period !== 'all' || startDate || endDate) {
+        filteredDonors = filterDataByDate(donorsData, period, startDate, endDate, 'createdAt');
+    }
+    
+    let tableHtml = `
+        <table class="stats-table names-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>اسم المتبرع</th>
+                    <th>رقم الهاتف</th>
+                    <th>فصيلة الدم</th>
+                    <th>آخر تبرع</th>
+                    <th>الحالة</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    filteredDonors.forEach((donor, index) => {
+        const lastDonation = donor.lastDonation ? formatDate(donor.lastDonation) : 'لم يتبرع بعد';
+        const isEligible = checkDonorEligibility(donor.lastDonation);
+        const status = isEligible ? '✅ متاح' : '❌ غير متاح';
+        
+        tableHtml += `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${donor.name}</td>
+                <td>${donor.phone}</td>
+                <td><span class="blood-type-badge">${donor.bloodType}</span></td>
+                <td>${lastDonation}</td>
+                <td>${status}</td>
+            </tr>
+        `;
+    });
+    
+    tableHtml += '</tbody></table>';
+    tableHtml += `<p class="total-count">إجمالي: ${filteredDonors.length} متبرع</p>`;
+    
+    return tableHtml;
+}
+
+function generateDonationsNamesList(donorsData, donationsData, period, startDate, endDate) {
+    const filteredDonations = filterDataByDate(donationsData, period, startDate, endDate, 'donationDate');
+    
+    let tableHtml = `
+        <table class="stats-table names-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>اسم المتبرع</th>
+                    <th>رقم الهاتف</th>
+                    <th>فصيلة الدم</th>
+                    <th>تاريخ التبرع</th>
+                    <th>الكمية</th>
+                    <th>ملاحظات</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    filteredDonations.forEach((donation, index) => {
+        const donor = donorsData.find(d => d.id === donation.donorId);
+        const date = donation.donationDate ? 
+            new Date(donation.donationDate.toDate ? donation.donationDate.toDate() : donation.donationDate).toLocaleDateString('ar-SA') : 
+            'غير محدد';
+        const notes = donation.notes ? donation.notes.substring(0, 50) + (donation.notes.length > 50 ? '...' : '') : '-';
+        
+        tableHtml += `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${donor ? donor.name : 'غير معروف'}</td>
+                <td>${donor ? donor.phone : '-'}</td>
+                <td><span class="blood-type-badge">${donor ? donor.bloodType : '-'}</span></td>
+                <td>${date}</td>
+                <td>${donation.amount} وحدة</td>
+                <td>${notes}</td>
+            </tr>
+        `;
+    });
+    
+    tableHtml += '</tbody></table>';
+    const totalAmount = filteredDonations.reduce((sum, d) => sum + d.amount, 0);
+    tableHtml += `<p class="total-count">إجمالي: ${filteredDonations.length} تبرع | ${totalAmount} وحدة دم</p>`;
+    
+    return tableHtml;
+}
+
+function generateVouchersNamesList(donorsData, vouchersData, period, startDate, endDate) {
+    const filteredVouchers = filterDataByDate(vouchersData, period, startDate, endDate, 'issueDate');
+    
+    let tableHtml = `
+        <table class="stats-table names-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>اسم المتبرع</th>
+                    <th>رقم الهاتف</th>
+                    <th>فصيلة الدم</th>
+                    <th>رقم الشيك</th>
+                    <th>تاريخ الإصدار</th>
+                    <th>الكمية</th>
+                    <th>الحالة</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    filteredVouchers.forEach((voucher, index) => {
+        const donor = donorsData.find(d => d.id === voucher.donorId);
+        const date = voucher.issueDate ? formatDate(voucher.issueDate) : 'غير محدد';
+        const statusText = getStatusText(voucher.status);
+        
+        tableHtml += `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${donor ? donor.name : 'غير معروف'}</td>
+                <td>${donor ? donor.phone : '-'}</td>
+                <td><span class="blood-type-badge">${donor ? donor.bloodType : '-'}</span></td>
+                <td>${voucher.voucherNumber}</td>
+                <td>${date}</td>
+                <td>${voucher.amount} وحدة</td>
+                <td>${statusText}</td>
+            </tr>
+        `;
+    });
+    
+    tableHtml += '</tbody></table>';
+    const totalAmount = filteredVouchers.reduce((sum, v) => sum + v.amount, 0);
+    tableHtml += `<p class="total-count">إجمالي: ${filteredVouchers.length} شيك | ${totalAmount} وحدة دم</p>`;
+    
+    return tableHtml;
+}
+
+function generateRedeemedVouchersNamesList(donorsData, vouchersData, period, startDate, endDate) {
+    const redeemedVouchers = vouchersData.filter(v => v.status === 'redeemed');
+    const filteredVouchers = filterDataByDate(redeemedVouchers, period, startDate, endDate, 'redemptionDate');
+    
+    let tableHtml = `
+        <table class="stats-table names-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>اسم المتبرع</th>
+                    <th>رقم الهاتف</th>
+                    <th>فصيلة الدم</th>
+                    <th>رقم الشيك</th>
+                    <th>تاريخ الصرف</th>
+                    <th>الكمية</th>
+                    <th>المستفيد</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    filteredVouchers.forEach((voucher, index) => {
+        const donor = donorsData.find(d => d.id === voucher.donorId);
+        const date = voucher.redemptionDate ? 
+            new Date(voucher.redemptionDate.toDate ? voucher.redemptionDate.toDate() : voucher.redemptionDate).toLocaleDateString('ar-SA') : 
+            'غير محدد';
+        
+        tableHtml += `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${donor ? donor.name : 'غير معروف'}</td>
+                <td>${donor ? donor.phone : '-'}</td>
+                <td><span class="blood-type-badge">${donor ? donor.bloodType : '-'}</span></td>
+                <td>${voucher.voucherNumber}</td>
+                <td>${date}</td>
+                <td>${voucher.amount} وحدة</td>
+                <td>${voucher.beneficiaryName || '-'}</td>
+            </tr>
+        `;
+    });
+    
+    tableHtml += '</tbody></table>';
+    const totalAmount = filteredVouchers.reduce((sum, v) => sum + v.amount, 0);
+    tableHtml += `<p class="total-count">إجمالي: ${filteredVouchers.length} شيك مصروف | ${totalAmount} وحدة دم</p>`;
+    
+    return tableHtml;
+}
+
+function generateAllNamesList(donorsData, donationsData, vouchersData, period, startDate, endDate) {
+    const filteredDonations = filterDataByDate(donationsData, period, startDate, endDate, 'donationDate');
+    const filteredVouchers = filterDataByDate(vouchersData, period, startDate, endDate, 'issueDate');
+    
+    let tableHtml = `
+        <table class="stats-table names-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>اسم المتبرع</th>
+                    <th>رقم الهاتف</th>
+                    <th>فصيلة الدم</th>
+                    <th>عدد التبرعات</th>
+                    <th>إجمالي الوحدات</th>
+                    <th>عدد الشيكات</th>
+                    <th>وحدات الشيكات</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    const donorStats = {};
+    
+    // حساب إحصائيات التبرعات
+    filteredDonations.forEach(donation => {
+        if (!donorStats[donation.donorId]) {
+            const donor = donorsData.find(d => d.id === donation.donorId);
+            donorStats[donation.donorId] = {
+                name: donor ? donor.name : 'غير معروف',
+                phone: donor ? donor.phone : '-',
+                bloodType: donor ? donor.bloodType : '-',
+                donationsCount: 0,
+                donationsAmount: 0,
+                vouchersCount: 0,
+                vouchersAmount: 0
+            };
+        }
+        donorStats[donation.donorId].donationsCount++;
+        donorStats[donation.donorId].donationsAmount += donation.amount;
+    });
+    
+    // حساب إحصائيات الشيكات
+    filteredVouchers.forEach(voucher => {
+        if (!donorStats[voucher.donorId]) {
+            const donor = donorsData.find(d => d.id === voucher.donorId);
+            donorStats[voucher.donorId] = {
+                name: donor ? donor.name : 'غير معروف',
+                phone: donor ? donor.phone : '-',
+                bloodType: donor ? donor.bloodType : '-',
+                donationsCount: 0,
+                donationsAmount: 0,
+                vouchersCount: 0,
+                vouchersAmount: 0
+            };
+        }
+        donorStats[voucher.donorId].vouchersCount++;
+        donorStats[voucher.donorId].vouchersAmount += voucher.amount;
+    });
+    
+    let index = 1;
+    for (const [donorId, stats] of Object.entries(donorStats)) {
+        tableHtml += `
+            <tr>
+                <td>${index++}</td>
+                <td>${stats.name}</td>
+                <td>${stats.phone}</td>
+                <td><span class="blood-type-badge">${stats.bloodType}</span></td>
+                <td>${stats.donationsCount}</td>
+                <td>${stats.donationsAmount} وحدة</td>
+                <td>${stats.vouchersCount}</td>
+                <td>${stats.vouchersAmount} وحدة</td>
+            </tr>
+        `;
+    }
+    
+    tableHtml += '</tbody></table>';
+    tableHtml += `<p class="total-count">إجمالي: ${Object.keys(donorStats).length} متبرع</p>`;
+    
+    return tableHtml;
+}
+
+function getDateRangeText(period, startDate, endDate) {
+    if (startDate && endDate) {
+        return `الفترة: من ${new Date(startDate).toLocaleDateString('ar-SA')} إلى ${new Date(endDate).toLocaleDateString('ar-SA')}`;
+    }
+    
+    switch (period) {
+        case 'today':
+            return 'الفترة: اليوم';
+        case 'week':
+            return 'الفترة: هذا الأسبوع';
+        case 'month':
+            return 'الفترة: هذا الشهر';
+        case 'year':
+            return 'الفترة: هذا العام';
+        default:
+            return 'الفترة: جميع الفترات';
+    }
+}
+
+function printStatistics() {
+    window.print();
+}
+
+function clearStatisticsFilters() {
+    document.getElementById('statsType').value = 'overview';
+    document.getElementById('statsPeriod').value = 'all';
+    document.getElementById('statsStartDate').value = '';
+    document.getElementById('statsEndDate').value = '';
+    document.getElementById('statisticsContent').innerHTML = '<div class="stats-loading"><p>يرجى اختيار الفلاتر وضغط "توليد الإحصائيات"</p></div>';
+}
 function clearAllFilters() {
     document.getElementById('searchDonors').value = '';
     document.getElementById('bloodTypeFilter').value = '';

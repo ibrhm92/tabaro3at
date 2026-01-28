@@ -89,44 +89,84 @@ body {
 }
 
 /* الأزرار الرئيسية */
-.actions {
-    display: flex;
-    flex-direction: column;
+.action-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 15px;
-    margin-bottom: 25px;
+    margin: 20px 0;
 }
 
 .action-btn {
-    background: white;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
     border: none;
-    padding: 20px;
+    padding: 20px 15px;
     border-radius: 15px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    font-size: 14px;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 15px;
+    gap: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.action-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.action-btn:hover::before {
+    left: 100%;
 }
 
 .action-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
 }
 
 .action-btn:active {
-    transform: translateY(0);
+    transform: translateY(-1px);
+}
+
+/* ألوان مختلفة للأزرار */
+.action-btn.primary {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+}
+
+.action-btn.success {
+    background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+}
+
+.action-btn.info {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+}
+
+.action-btn.secondary {
+    background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+}
+
+.action-btn.warning {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+}
+
+.action-btn.stats {
+    background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
 }
 
 .btn-icon {
     font-size: 24px;
-    width: 40px;
-    height: 40px;
-    background: #e74c3c;
-    color: white;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
+    margin-bottom: 5px;
     justify-content: center;
 }
 
@@ -442,7 +482,351 @@ body {
     display: inline-block;
 }
 
-/* معلومات الشيك */
+/* حاوية البحث عن المتبرع */
+.donor-search-container {
+    position: relative;
+}
+
+.search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 2px solid #ecf0f1;
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.search-result-item {
+    padding: 12px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #f8f9fa;
+    transition: background 0.3s ease;
+}
+
+.search-result-item:hover {
+    background: #f8f9fa;
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-item .donor-name {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.search-result-item .donor-info {
+    font-size: 12px;
+    color: #7f8c8d;
+    margin-top: 2px;
+}
+
+/* زر الطباعة */
+.print-btn {
+    background: #27ae60;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    white-space: nowrap;
+}
+
+.print-btn:hover {
+    background: #229954;
+}
+
+/* محتوى الإحصائيات */
+.statistics-content {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    border: 1px solid #ecf0f1;
+    margin-top: 20px;
+}
+
+.stats-loading {
+    text-align: center;
+    padding: 40px;
+    color: #7f8c8d;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card h3 {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.stat-card .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0;
+}
+
+.stat-card .stat-label {
+    font-size: 12px;
+    opacity: 0.8;
+    margin-top: 5px;
+}
+
+.stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.stats-table th,
+.stats-table td {
+    padding: 12px;
+    text-align: right;
+    border-bottom: 1px solid #ecf0f1;
+}
+
+.stats-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.stats-table tr:hover {
+    background: #f8f9fa;
+}
+
+/* تنسيقات الكشف بالأسماء */
+.names-list-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px;
+}
+
+.names-list-header h2 {
+    margin: 0 0 10px 0;
+    font-size: 24px;
+}
+
+.date-range {
+    margin: 0;
+    font-size: 16px;
+    opacity: 0.9;
+}
+
+.names-table {
+    font-size: 14px;
+    border-collapse: collapse;
+    margin: 20px 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.names-table th {
+    background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+    color: white;
+    font-weight: 600;
+    padding: 15px 12px;
+    text-align: center;
+    border: none;
+}
+
+.names-table td {
+    padding: 12px;
+    text-align: center;
+    border-bottom: 1px solid #ecf0f1;
+    vertical-align: middle;
+}
+
+.names-table tr:nth-child(even) {
+    background: #f8f9fa;
+}
+
+.names-table tr:hover {
+    background: #e8f4f8;
+    transition: background 0.3s ease;
+}
+
+.total-count {
+    text-align: center;
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 20px 0;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 2px solid #3498db;
+}
+
+/* تنسيقات إحصائيات المتبرع */
+.donor-stats-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 25px;
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    color: white;
+    border-radius: 15px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.donor-stats-header h2 {
+    margin: 0 0 15px 0;
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.donor-stats-header .donor-info {
+    margin: 0 0 10px 0;
+    font-size: 18px;
+    opacity: 0.95;
+}
+
+.donor-stats-header .date-range {
+    margin: 0;
+    font-size: 16px;
+    opacity: 0.9;
+    font-style: italic;
+}
+
+.donor-summary {
+    margin-top: 30px;
+    padding: 25px;
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    color: white;
+    border-radius: 15px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.donor-summary h3 {
+    margin: 0 0 20px 0;
+    font-size: 22px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+.summary-item {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 16px;
+    line-height: 1.4;
+}
+
+.summary-item strong {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+/* تحسينات الطباعة لإحصائيات المتبرع */
+@media print {
+    .donor-stats-header {
+        background: white !important;
+        color: black !important;
+        border: 3px solid black !important;
+        box-shadow: none !important;
+    }
+    
+    .donor-summary {
+        background: white !important;
+        color: black !important;
+        border: 2px solid black !important;
+        box-shadow: none !important;
+    }
+    
+    .summary-item {
+        background: #f5f5f5 !important;
+        border: 1px solid black !important;
+        color: black !important;
+    }
+    
+    .summary-item strong {
+        color: black !important;
+    }
+}
+@media print {
+    .names-list-header {
+        background: white !important;
+        color: black !important;
+        border: 2px solid black !important;
+    }
+    
+    .names-table {
+        box-shadow: none !important;
+        border: 1px solid black !important;
+    }
+    
+    .names-table th {
+        background: #f0f0f0 !important;
+        color: black !important;
+        border: 1px solid black !important;
+    }
+    
+    .names-table td {
+        border: 1px solid black !important;
+    }
+    
+    .total-count {
+        border: 2px solid black !important;
+        background: white !important;
+    }
+}
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    
+    #statisticsModal, #statisticsModal * {
+        visibility: visible;
+    }
+    
+    #statisticsModal {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+    
+    .form-buttons,
+    .filter-section,
+    .modal-content h2 {
+        display: none !important;
+    }
+}
 .voucher-info {
     background: #f8f9fa;
     padding: 15px;
