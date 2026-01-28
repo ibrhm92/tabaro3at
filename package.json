@@ -1,0 +1,15 @@
+{
+  "name": "blood-bank-app",
+  "version": "1.0.0",
+  "description": "تطبيق بنك الدم للهاتف المحمول",
+  "main": "index.html",
+  "scripts": {
+    "start": "echo 'Static site - no start script needed'",
+    "build": "echo 'Static site - no build needed'"
+  },
+  "keywords": ["blood", "bank", "donation", "mobile"],
+  "author": "Blood Bank Team",
+  "license": "MIT",
+  "devDependencies": {},
+  "dependencies": {}
+}
