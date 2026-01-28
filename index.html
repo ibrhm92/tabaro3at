@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>بنك الدم</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- شريط علوي -->
+    <header class="header">
+        <div class="header-content">
+            <h1>🩸 بنك الدم</h1>
+            <button id="loginBtn" class="login-btn">دخول</button>
+        </div>
+    </header>
+
+    <!-- المحتوى الرئيسي -->
+    <main class="main-content">
+        <!-- إحصائيات سريعة -->
+        <div class="stats">
+            <div class="stat-item">
+                <span class="stat-number" id="donorsCount">0</span>
+                <span class="stat-label">متبرع</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number" id="donationsCount">0</span>
+                <span class="stat-label">تبرع</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number" id="vouchersCount">0</span>
+                <span class="stat-label">شيك</span>
+            </div>
+        </div>
+
+        <!-- الأزرار الرئيسية -->
+        <div class="actions">
+            <button id="addDonorBtn" class="action-btn">
+                <span class="btn-icon">➕</span>
+                <span class="btn-text">إضافة متبرع جديد</span>
+            </button>
+            
+            <button id="addDonationBtn" class="action-btn">
+                <span class="btn-icon">🩸</span>
+                <span class="btn-text">تسجيل تبرع</span>
+            </button>
+            
+            <button id="addVoucherBtn" class="action-btn">
+                <span class="btn-icon">🎫</span>
+                <span class="btn-text">إصدار شيك دم</span>
+            </button>
+            
+            <button id="donorsListBtn" class="action-btn">
+                <span class="btn-icon">👥</span>
+                <span class="btn-text">قائمة المتبرعين</span>
+            </button>
+            
+            <button id="redeemVoucherBtn" class="action-btn">
+                <span class="btn-icon">💰</span>
+                <span class="btn-text">صرف شيك دم</span>
+            </button>
+        </div>
+
+        <!-- آخر السجلات -->
+        <div class="recent-section">
+            <h2>آخر السجلات</h2>
+            
+            <div class="recent-list">
+                <h3>آخر المتبرعين</h3>
+                <div id="recentDonors" class="list-items">
+                    <p class="empty-message">لا يوجد متبرعين</p>
+                </div>
+            </div>
+
+            <div class="recent-list">
+                <h3>آخر التبرعات</h3>
+                <div id="recentDonations" class="list-items">
+                    <p class="empty-message">لا يوجد تبرعات</p>
+                </div>
+            </div>
+
+            <div class="recent-list">
+                <h3>آخر الشيكات</h3>
+                <div id="recentVouchers" class="list-items">
+                    <p class="empty-message">لا يوجد شيكات</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- نماذج الإدخال (مخفية في البداية) -->
+    
+    <!-- نموذج إضافة متبرع -->
+    <div id="addDonorModal" class="modal">
+        <div class="modal-content">
+            <h2>إضافة متبرع جديد</h2>
+            <form id="addDonorForm">
+                <input type="text" id="donorName" placeholder="الاسم الكامل" required>
+                <input type="tel" id="donorPhone" placeholder="رقم الهاتف" required>
+                <select id="donorBloodType" required>
+                    <option value="">اختر فصيلة الدم</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                </select>
+                <div class="form-buttons">
+                    <button type="submit" class="submit-btn">حفظ</button>
+                    <button type="button" class="cancel-btn" onclick="closeModal('addDonorModal')">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- نموذج تسجيل تبرع -->
+    <div id="addDonationModal" class="modal">
+        <div class="modal-content">
+            <h2>تسجيل تبرع جديد</h2>
+            <form id="addDonationForm">
+                <select id="donationDonor" required>
+                    <option value="">اختر المتبرع</option>
+                </select>
+                <input type="date" id="donationDate" required>
+                <input type="number" id="donationAmount" placeholder="كمية التبرع (وحدة)" min="1" required>
+                <div class="form-buttons">
+                    <button type="submit" class="submit-btn">تسجيل</button>
+                    <button type="button" class="cancel-btn" onclick="closeModal('addDonationModal')">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- نموذج إصدار شيك دم -->
+    <div id="addVoucherModal" class="modal">
+        <div class="modal-content">
+            <h2>إصدار شيك دم جديد</h2>
+            <form id="addVoucherForm">
+                <select id="voucherDonor" required>
+                    <option value="">اختر المتبرع</option>
+                </select>
+                <input type="number" id="voucherAmount" placeholder="عدد الوحدات" min="1" required>
+                <div class="form-buttons">
+                    <button type="submit" class="submit-btn">إصدار</button>
+                    <button type="button" class="cancel-btn" onclick="closeModal('addVoucherModal')">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- نموذج قائمة المتبرعين -->
+    <div id="donorsListModal" class="modal">
+        <div class="modal-content modal-large">
+            <h2>قائمة المتبرعين</h2>
+            
+            <!-- خيارات الفلترة -->
+            <div class="filter-section">
+                <div class="filter-row">
+                    <input type="text" id="searchDonors" placeholder="ابحث عن متبرع بالاسم أو الهاتف">
+                </div>
+                <div class="filter-row">
+                    <select id="bloodTypeFilter">
+                        <option value="">جميع فصائل الدم</option>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                    </select>
+                    
+                    <select id="eligibilityFilter">
+                        <option value="all">جميع المتبرعين</option>
+                        <option value="eligible">متاحون للتبرع</option>
+                        <option value="not-eligible">غير متاحين للتبرع</option>
+                    </select>
+                    
+                    <button id="clearFilters" class="clear-filters-btn">مسح الفلاتر</button>
+                </div>
+            </div>
+            
+            <div id="donorsList" class="donors-list">
+                <p class="empty-message">جاري التحميل...</p>
+            </div>
+            <div class="form-buttons">
+                <button type="button" class="cancel-btn" onclick="closeModal('donorsListModal')">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نموذج صرف شيك الدم -->
+    <div id="redeemVoucherModal" class="modal">
+        <div class="modal-content">
+            <h2>صرف شيك الدم</h2>
+            <form id="redeemVoucherForm">
+                <select id="voucherSelect" required>
+                    <option value="">اختر الشيك المراد صرفه</option>
+                </select>
+                <input type="date" id="redemptionDate" required>
+                <div id="voucherInfo" class="voucher-info" style="display: none;">
+                    <h3>بيانات الشيك</h3>
+                    <div id="voucherDetails"></div>
+                </div>
+                <input type="text" id="beneficiaryName" placeholder="اسم المستفيد" required>
+                <input type="text" id="redemptionPurpose" placeholder="الغرض من الصرف" required>
+                <div class="form-buttons">
+                    <button type="submit" class="submit-btn">صرف الشيك</button>
+                    <button type="button" class="cancel-btn" onclick="closeModal('redeemVoucherModal')">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- نموذج تعديل متبرع -->
+    <div id="editDonorModal" class="modal">
+        <div class="modal-content">
+            <h2>تعديل بيانات المتبرع</h2>
+            <form id="editDonorForm">
+                <input type="hidden" id="editDonorId">
+                <input type="text" id="editDonorName" placeholder="الاسم الكامل" required>
+                <input type="tel" id="editDonorPhone" placeholder="رقم الهاتف" required>
+                <select id="editDonorBloodType" required>
+                    <option value="">اختر فصيلة الدم</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                </select>
+                <div class="form-buttons">
+                    <button type="submit" class="submit-btn">تحديث</button>
+                    <button type="button" class="cancel-btn" onclick="closeModal('editDonorModal')">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- نموذج تعديل تبرع -->
+    <div id="editDonationModal" class="modal">
+        <div class="modal-content">
+            <h2>تعديل بيانات التبرع</h2>
+            <form id="editDonationForm">
+                <input type="hidden" id="editDonationId">
+                <select id="editDonationDonor" required>
+                    <option value="">اختر المتبرع</option>
+                </select>
+                <input type="number" id="editDonationAmount" placeholder="كمية التبرع (وحدة)" min="1" required>
+                <div class="form-buttons">
+                    <button type="submit" class="submit-btn">تحديث</button>
+                    <button type="button" class="cancel-btn" onclick="closeModal('editDonationModal')">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- نموذج تعديل شيك -->
+    <div id="editVoucherModal" class="modal">
+        <div class="modal-content">
+            <h2>تعديل بيانات شيك الدم</h2>
+            <form id="editVoucherForm">
+                <input type="hidden" id="editVoucherId">
+                <select id="editVoucherDonor" required>
+                    <option value="">اختر المتبرع</option>
+                </select>
+                <input type="number" id="editVoucherAmount" placeholder="عدد الوحدات" min="1" required>
+                <div class="form-buttons">
+                    <button type="submit" class="submit-btn">تحديث</button>
+                    <button type="button" class="cancel-btn" onclick="closeModal('editVoucherModal')">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- نموذج تسجيل الدخول -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <h2>تسجيل الدخول</h2>
+            <form id="loginForm">
+                <input type="text" id="username" placeholder="اسم المستخدم" required>
+                <input type="password" id="password" placeholder="كلمة المرور" required>
+                <div class="form-buttons">
+                    <button type="submit" class="submit-btn">دخول</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- رسائل التنبيه -->
+    <div id="notification" class="notification"></div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    
+    <!-- ملفات المشروع -->
+    <script src="firebase-config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
