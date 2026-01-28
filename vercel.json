@@ -1,4 +1,4 @@
-{
+{{
   "version": 2,
   "name": "blood-bank-app",
   "builds": [
@@ -7,10 +7,10 @@
       "use": "@vercel/static"
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
